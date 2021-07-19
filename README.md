@@ -17,8 +17,9 @@ Official repo of my work on banana fruit ripening system
 3. Activate the virtual environment (project\Scripts\activate)
 4. Install the packages
 5. Clone the Repo
-6. Goto the folder and run the script (python app.py)
-7. Browse the images, the model will classify it
+6. Create a new folder called uploads to store all the uploaded images
+7. Goto the folder and run the script (python app.py)
+8. Browse the images, the model will classify it
 
 # References
 1. http://teachablemachine.withgoogle.com/
