@@ -1,4 +1,3 @@
 0 Too Early
 1 Ripe
 2 Too Late
-3 No Banana
