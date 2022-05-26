@@ -1,93 +1,54 @@
-# -*- coding: utf-8 -*-
-
-from __future__ import division, print_function
-# coding=utf-8
-import sys
+import streamlit as st
 import os
-import glob
-import re
+from PIL import Image, ImageOps
 import numpy as np
-import tensorflow as tf
-import tensorflow as tf
+import tensorflow.keras
+import random
 
-# Keras
-from tensorflow.keras.applications.resnet50 import preprocess_input
-from tensorflow.keras.models import load_model
-from tensorflow.keras.preprocessing import image
+labels={
+    0: 'Too Early',
+    1: 'Rippen',
+    2: 'Too Late'
+}
 
-# Flask utils
-from flask import Flask, redirect, url_for, request, render_template
-from werkzeug.utils import secure_filename
-#from gevent.pywsgi import WSGIServer
+st.title('Fruit Ripening System')
+model=tensorflow.keras.models.load_model('keras_model.h5')
 
-# Define a flask app
-app = Flask(__name__)
+def load_image(image_File):
+    img=Image.open(image_File)
+    return img
 
-# Model saved with Keras model.save()
-MODEL_PATH ='keras_model.h5'
+st.subheader('Upload Input Image')
+src_image_file=st.file_uploader('upload images',type=['png','jpg','jpeg'])
 
-# Load your trained model
-model = load_model(MODEL_PATH)
+if src_image_file is not None:
+    file_details={"filename":src_image_file,"filetype":src_image_file.type,"filesize":src_image_file.size}
+    st.write(file_details)
+    st.image(load_image(src_image_file),width=250)
 
+    with open(os.path.join("uploads","src.jpg"),"wb") as f:
+        f.write(src_image_file.getbuffer())
+        st.success("File Saved")
 
-def model_predict(img_path, model):
-    print(img_path)
-    img = image.load_img(img_path, target_size=(224, 224))
+    data=np.ndarray(shape=(1,224,224,3),dtype=np.float32)
+    #open the image
+    image=Image.open('uploads/src.jpg') # test.jpg
+    # resize the image
+    size=(224,224)
+    image=ImageOps.fit(image,size,Image.ANTIALIAS)
+    # convert this into numpy array
+    image_array=np.asarray(image)
+    # Normalise the Image - (0 to 255)
+    normalise_image_array=(image_array.astype(np.float32)/127.0)-1
+    # loading the image into the array
+    data[0]=normalise_image_array
+    # pass this data to model
+    prediction=model.predict(data)
+    print(prediction) # [[0.5,0.5,0.7,0.3]]
+    # Decision Logic
+    prediction=list(prediction[0])
+    max_prediction=max(prediction)
+    index_max=prediction.index(max_prediction)
+    print(index_max)
+    st.text("Expected Result: "+labels[index_max])
 
-    # Preprocessing the image
-    x = image.img_to_array(img)
-    # x = np.true_divide(x, 255)
-    ## Scaling
-    x=x/255
-    x = np.expand_dims(x, axis=0)
-   
-
-    # Be careful how your trained model deals with the input
-    # otherwise, it won't make correct prediction!
-   # x = preprocess_input(x)
-
-    preds = model.predict(x)
-    preds=np.argmax(preds, axis=1)
-    print(preds)
-    if preds==0:
-        preds="Too Early"
-    elif preds==1:
-        preds="Rippen"
-    elif preds==2:
-        preds="Too Late"
-    elif preds==3:
-        preds="No Banana"
-    else:
-        preds="Not Detected"
-    
-    
-    return preds
-
-
-@app.route('/', methods=['GET'])
-def index():
-    # Main page
-    return render_template('index.html')
-
-
-@app.route('/predict', methods=['GET', 'POST'])
-def upload():
-    if request.method == 'POST':
-        # Get the file from post request
-        f = request.files['file']
-
-        # Save the file to ./uploads
-        basepath = os.path.dirname(__file__)
-        file_path = os.path.join(
-            basepath, 'uploads', secure_filename(f.filename))
-        f.save(file_path)
-
-        # Make prediction
-        preds = model_predict(file_path, model)
-        result=preds
-        return result
-    return None
-
-
-if __name__ == '__main__':
-    app.run(port=5001,debug=True)
